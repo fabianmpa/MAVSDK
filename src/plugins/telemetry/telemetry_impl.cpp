@@ -101,6 +101,11 @@ void TelemetryImpl::init()
         this);
 
     _parent->register_mavlink_message_handler(
+        MAVLINK_MSG_ID_HOVER_GAMES_STATUS,
+        std::bind(&TelemetryImpl::process_HoverGamesStatus, this, _1),
+        this);
+
+    _parent->register_mavlink_message_handler(
         MAVLINK_MSG_ID_UTM_GLOBAL_POSITION,
         std::bind(&TelemetryImpl::process_unix_epoch_time, this, _1),
         this);
@@ -319,6 +324,12 @@ Telemetry::Result TelemetryImpl::set_rate_distance_sensor(double rate_hz)
         _parent->set_msg_rate(MAVLINK_MSG_ID_DISTANCE_SENSOR, rate_hz));
 }
 
+Telemetry::Result TelemetryImpl::set_rate_HoverGamesStatus(double rate_hz)
+{
+    return telemetry_result_from_command_result(
+        _parent->set_msg_rate(MAVLINK_MSG_ID_HOVER_GAMES_STATUS, rate_hz));
+}
+
 Telemetry::Result TelemetryImpl::set_rate_unix_epoch_time(double rate_hz)
 {
     return telemetry_result_from_command_result(
@@ -483,6 +494,15 @@ void TelemetryImpl::set_rate_distance_sensor_async(
 {
     _parent->set_msg_rate_async(
         MAVLINK_MSG_ID_DISTANCE_SENSOR,
+        rate_hz,
+        std::bind(&TelemetryImpl::command_result_callback, std::placeholders::_1, callback));
+}
+
+void TelemetryImpl::set_rate_HoverGamesStatus_async(
+    double rate_hz, Telemetry::ResultCallback callback)
+{
+    _parent->set_msg_rate_async(
+        MAVLINK_MSG_ID_HOVER_GAMES_STATUS,
         rate_hz,
         std::bind(&TelemetryImpl::command_result_callback, std::placeholders::_1, callback));
 }
@@ -801,6 +821,9 @@ void TelemetryImpl::process_gps_raw_int(const mavlink_message_t& message)
     Telemetry::GpsInfo new_gps_info;
     new_gps_info.num_satellites = gps_raw_int.satellites_visible;
     new_gps_info.fix_type = fix_type;
+    new_gps_info.lat = gps_raw_int.lat;
+    new_gps_info.lon = gps_raw_int.lon;
+    new_gps_info.alt = gps_raw_int.alt;
     set_gps_info(new_gps_info);
 
     // TODO: This is just an interim hack, we will have to look at
@@ -1161,6 +1184,26 @@ void TelemetryImpl::process_distance_sensor(const mavlink_message_t& message)
     if (_distance_sensor_subscription) {
         auto callback = _distance_sensor_subscription;
         auto arg = distance_sensor();
+        _parent->call_user_callback([callback, arg]() { callback(arg); });
+    }
+}
+
+void TelemetryImpl::process_HoverGamesStatus(const mavlink_message_t& message)
+{
+    mavlink_hover_games_status_t hovergames_status_message;
+    mavlink_msg_hover_games_status_decode(&message, &hovergames_status_message);
+
+    Telemetry::HoverGamesStatus_s hovergamesStatus_struct;
+
+    hovergamesStatus_struct.HoverGames_SM = hovergames_status_message.HoverGames_SM;
+    hovergamesStatus_struct.HoverGames_ActiveSM = hovergames_status_message.HoverGames_ActiveSM;
+    hovergamesStatus_struct.timeboot = hovergames_status_message.time_boot_ms;
+    set_HoverGamesStatus(hovergamesStatus_struct);
+
+    std::lock_guard<std::mutex> lock(_subscription_mutex);
+    if (_HoverGamesStatus_subscription) {
+        auto callback = _HoverGamesStatus_subscription;
+        auto arg = HoverGamesStatus();
         _parent->call_user_callback([callback, arg]() { callback(arg); });
     }
 }
@@ -1558,6 +1601,12 @@ Telemetry::DistanceSensor TelemetryImpl::distance_sensor() const
     return _distance_sensor;
 }
 
+Telemetry::HoverGamesStatus_s TelemetryImpl::HoverGamesStatus() const
+{
+    std::lock_guard<std::mutex> lock(_HoverGamesStatus_mutex);
+    return _HoverGamesStatus;
+}
+
 void TelemetryImpl::set_health_local_position(bool ok)
 {
     std::lock_guard<std::mutex> lock(_health_mutex);
@@ -1656,6 +1705,12 @@ void TelemetryImpl::set_distance_sensor(Telemetry::DistanceSensor& distance_sens
 {
     std::lock_guard<std::mutex> lock(_actuator_output_status_mutex);
     _distance_sensor = distance_sensor;
+}
+
+void TelemetryImpl::set_HoverGamesStatus(Telemetry::HoverGamesStatus_s& hovergames)
+{
+    std::lock_guard<std::mutex> lock(_actuator_output_status_mutex);
+    _HoverGamesStatus = hovergames;
 }
 
 void TelemetryImpl::position_velocity_ned_async(Telemetry::PositionVelocityNedCallback& callback)
@@ -1821,6 +1876,12 @@ void TelemetryImpl::distance_sensor_async(Telemetry::DistanceSensorCallback& cal
 {
     std::lock_guard<std::mutex> lock(_subscription_mutex);
     _distance_sensor_subscription = callback;
+}
+
+void TelemetryImpl::HoverGamesStatus_async(Telemetry::HoverGamesStatusCallback& callback)
+{
+    std::lock_guard<std::mutex> lock(_subscription_mutex);
+    _HoverGamesStatus_subscription = callback;
 }
 
 void TelemetryImpl::get_gps_global_origin_async(

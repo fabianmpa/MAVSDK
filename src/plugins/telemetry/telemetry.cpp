@@ -25,6 +25,7 @@ using VelocityBody = Telemetry::VelocityBody;
 using PositionBody = Telemetry::PositionBody;
 using Odometry = Telemetry::Odometry;
 using DistanceSensor = Telemetry::DistanceSensor;
+using HoverGamesStatus = Telemetry::HoverGamesStatus_s;
 using PositionNed = Telemetry::PositionNed;
 using VelocityNed = Telemetry::VelocityNed;
 using PositionVelocityNed = Telemetry::PositionVelocityNed;
@@ -316,6 +317,16 @@ Telemetry::DistanceSensor Telemetry::distance_sensor() const
     return _impl->distance_sensor();
 }
 
+void Telemetry::subscribe_HoverGamesStatus(HoverGamesStatusCallback callback)
+{
+    _impl->HoverGamesStatus_async(callback);
+}
+
+Telemetry::HoverGamesStatus_s Telemetry::HoverGamesStatus() const
+{
+    return _impl->HoverGamesStatus();
+}
+
 void Telemetry::set_rate_position_async(double rate_hz, const ResultCallback callback)
 {
     _impl->set_rate_position_async(rate_hz, callback);
@@ -505,6 +516,16 @@ void Telemetry::set_rate_distance_sensor_async(double rate_hz, const ResultCallb
 Telemetry::Result Telemetry::set_rate_distance_sensor(double rate_hz) const
 {
     return _impl->set_rate_distance_sensor(rate_hz);
+}
+
+void Telemetry::set_rate_HoverGamesStatus_async(double rate_hz, const ResultCallback callback)
+{
+    _impl->set_rate_HoverGamesStatus_async(rate_hz, callback);
+}
+
+Telemetry::Result Telemetry::set_rate_HoverGamesStatus(double rate_hz) const
+{
+    return _impl->set_rate_HoverGamesStatus(rate_hz);
 }
 
 void Telemetry::get_gps_global_origin_async(const GetGpsGlobalOriginCallback callback)
@@ -862,6 +883,37 @@ std::ostream& operator<<(std::ostream& str, Telemetry::DistanceSensor const& dis
     return str;
 }
 
+bool operator==(const Telemetry::HoverGamesStatus_s& lhs, const Telemetry::HoverGamesStatus_s& rhs)
+{
+    return (
+            (std::isnan(rhs.HoverGames_SM) && std::isnan(lhs.HoverGames_SM))
+            ||
+            rhs.HoverGames_SM == lhs.HoverGames_SM
+           )
+            &&
+           (
+            (std::isnan(rhs.HoverGames_ActiveSM) && std::isnan(lhs.HoverGames_ActiveSM))
+            ||
+            rhs.HoverGames_ActiveSM == lhs.HoverGames_ActiveSM
+           )
+            &&
+           (
+            (std::isnan(rhs.timeboot) && std::isnan(lhs.timeboot))
+            ||
+            rhs.timeboot == lhs.timeboot
+           );
+}
+
+std::ostream& operator<<(std::ostream& str, Telemetry::HoverGamesStatus_s const& hovergamesStatus)
+{
+    str << std::setprecision(15);
+    str << "hovergamesStatus:" << '\n' << "{\n";
+    str << "    HoverGames_SM: "       << hovergamesStatus.HoverGames_SM       << '\n';
+    str << "    HoverGames_ActiveSM: " << hovergamesStatus.HoverGames_ActiveSM << '\n';
+    str << "    timeboot: "            << hovergamesStatus.timeboot            << '\n';
+    str << '}';
+    return str;
+}
 bool operator==(const Telemetry::PositionNed& lhs, const Telemetry::PositionNed& rhs)
 {
     return ((std::isnan(rhs.north_m) && std::isnan(lhs.north_m)) || rhs.north_m == lhs.north_m) &&

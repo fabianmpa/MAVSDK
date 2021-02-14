@@ -265,6 +265,9 @@ public:
      * @brief GPS information type.
      */
     struct GpsInfo {
+        int32_t lat; /*< [degE7] Latitude (WGS84, EGM96 ellipsoid)*/
+        int32_t lon; /*< [degE7] Longitude (WGS84, EGM96 ellipsoid)*/
+        int32_t alt;
         int32_t num_satellites{0}; /**< @brief Number of visible satellites in use */
         FixType fix_type{}; /**< @brief Fix type */
     };
@@ -588,6 +591,31 @@ public:
      */
     friend std::ostream&
     operator<<(std::ostream& str, Telemetry::DistanceSensor const& distance_sensor);
+
+    /**
+     * @brief HoverGames message type.
+     */
+    struct HoverGamesStatus_s{
+        uint32_t timeboot{uint32_t(NAN)};
+        uint8_t HoverGames_SM{uint8_t(NAN)}; /**< @brief Main State Machine, NaN if unknown. */
+        uint8_t HoverGames_ActiveSM{uint8_t(NAN)}; /**< @brief Active State Machine, NaN if unknown. */
+    };
+
+    /**
+     * @brief Equal operator to compare two `Telemetry::HoverGamesStatus_s` objects.
+     *
+     * @return `true` if items are equal.
+     */
+    friend bool
+    operator==(const Telemetry::HoverGamesStatus_s& lhs, const Telemetry::HoverGamesStatus_s& rhs);
+
+    /**
+     * @brief Stream operator to print information about a `Telemetry::HoverGamesStatus_s`.
+     *
+     * @return A reference to the stream.
+     */
+    friend std::ostream&
+    operator<<(std::ostream& str, Telemetry::HoverGamesStatus_s const& HoverGamesStatus);
 
     /**
      * @brief PositionNed message type.
@@ -1354,6 +1382,24 @@ public:
     DistanceSensor distance_sensor() const;
 
     /**
+     * @brief Callback type for subscribe_HoverGamesStatus_sensor.
+     */
+
+    using HoverGamesStatusCallback = std::function<void(HoverGamesStatus_s)>;
+
+    /**
+     * @brief Subscribe to 'HoverGamesStatus' updates.
+     */
+    void subscribe_HoverGamesStatus(HoverGamesStatusCallback callback);
+
+    /**
+     * @brief Poll for 'HoverGamesStatus' (blocking).
+     *
+     * @return One HoverGamesStatus update.
+     */
+    HoverGamesStatus_s HoverGamesStatus() const;
+
+    /**
      * @brief Set rate to 'position' updates.
      *
      * This function is non-blocking. See 'set_rate_position' for the blocking counterpart.
@@ -1669,6 +1715,23 @@ public:
      * @return Result of request.
      */
     Result set_rate_distance_sensor(double rate_hz) const;
+
+    /**
+     * @brief Set rate to 'HoverGamesStatus' updates.
+     *
+     * This function is non-blocking. See 'set_rate_HoverGamesStatus_sensor' for the blocking counterpart.
+     */
+    void set_rate_HoverGamesStatus_async(double rate_hz, const ResultCallback callback);
+
+    /**
+     * @brief Set rate to 'HoverGamesStatus' updates.
+     *
+     * This function is blocking. See 'set_rate_HoverGamesStatus_sensor_async' for the non-blocking
+     * counterpart.
+     *
+     * @return Result of request.
+     */
+    Result set_rate_HoverGamesStatus(double rate_hz) const;
 
     /**
      * @brief Callback type for get_gps_global_origin_async.
